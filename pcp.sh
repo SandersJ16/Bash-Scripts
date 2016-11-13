@@ -17,6 +17,4 @@ pcp()
          }
          END { print "" }' total_size=$(stat -c '%s' "${1}") count=0
 }
-tput civis
 pcp "$@"
-tput cnorm
