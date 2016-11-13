@@ -2,7 +2,7 @@
 
 pass_to_command=""
 declare -a exclude_paths
-while getopts ":hx:p:" opt; do
+while getopts ":hx:c:" opt; do
   case $opt in
     x)
 	  IFS=':' read -r -a exclude_path_option <<< "$OPTARG"
@@ -18,14 +18,14 @@ Usage: call_from_path [-x $exclude_paths] command $command_options_and_arguments
    -x   List of paths to exclude from calling the
         command from, these should be separted by
         the ':' symbol
-   -p   Pass the calling of this command and all of it's arguments to
+   -c   Pass the calling of this command and all of it's arguments to
         another command passed in by this parameter
    -h   displays basic help
 EOF
       exit 0
       ;;
     c)
-      pass_to_command="$OPTARG"
+      pass_to_command="${OPTARG} "
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
@@ -51,7 +51,11 @@ bash_command="$1"
 IFS=':' read -r -a paths <<< "$PATH"
 for path in "${paths[@]}"; do  
   if [[ ! " ${exclude_paths[@]} " =~ " ${path} " ]] && [ -f "${path}/${bash_command}" ]; then
-    "$pass_to_command ${path}/$@"
+    arguments_and_options=""
+    for argument_or_option in "${@:2}"; do
+      arguments_and_options=`printf "${arguments_and_options} %q" "$argument_or_option"`
+    done
+    eval "${pass_to_command}${path}/${bash_command}${arguments_and_options}"
     exit 0
 	fi
 done
