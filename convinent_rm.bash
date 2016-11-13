@@ -6,7 +6,7 @@ for input in "$@"; do
 	fi
 done
 if [ -d "$input" ]; then
-	/bin/rm -Ivr "$@"
+	call_from_path -x `dirname "${BASH_SOURCE[0]}"` rm -Ivr "$@"
 else
-	/bin/rm -Iv "$@"
+	call_from_path -x `dirname "${BASH_SOURCE[0]}"` rm -Iv "$@"
 fi
