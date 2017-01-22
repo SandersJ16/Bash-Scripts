@@ -40,16 +40,16 @@ done
 shift $(($OPTIND - 1))
 
 #If no command is passed then exit
-if [ "$#" -lt 1 ]; then 
+if [ "$#" -lt 1 ]; then
 	echo "No Command Passed" >&2
 	exit 1
 fi
 
-#Go through all non excluded paths and check if the command exists. 
+#Go through all non excluded paths and check if the command exists.
 #If it does call it with all of it's arguments and exit
 bash_command="$1"
 IFS=':' read -r -a paths <<< "$PATH"
-for path in "${paths[@]}"; do  
+for path in "${paths[@]}"; do
   if [[ ! " ${exclude_paths[@]} " =~ " ${path} " ]] && [ -f "${path}/${bash_command}" ]; then
     arguments_and_options=""
     for argument_or_option in "${@:2}"; do

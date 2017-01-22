@@ -10,9 +10,10 @@ while true; do
     sleep 60
     flash_on=0
 
-    for pid in `pgrep firefox` ; do
+    for pid in `pgrep "chrome|firefox"` ; do
         if grep libflashplayer /proc/$pid/maps > /dev/null ; then
             flash_on=1
+            echo "libflashplayer On"
         fi
 
         ss_on=`gconftool-2 -g /apps/gnome-screensaver/idle_activation_enabled`
