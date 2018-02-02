@@ -56,7 +56,7 @@ for path in "${paths[@]}"; do
       arguments_and_options=`printf "${arguments_and_options} %q" "$argument_or_option"`
     done
     eval "${pass_to_command}${path}/${bash_command}${arguments_and_options}"
-    exit 0
+    exit $?
 	fi
 done
 
