@@ -33,25 +33,24 @@ fi
 # Check if a Image with this name exists, if it does create a container using this image and exec into it
 #----------------------------------------------------------------------------------------------------------
 
-# If the name has a : in it then match on image tag as well as repository name
+# If the name doesn't have a : in it then match on all tags where image repository matches $1
 if [[ "$1" = *":"* ]]; then
-    image_format='{{.Repository}}:{{.Tag}}'
+    image_reference="$1"
 else
-    image_format='{{.Repository}}'
+    image_reference="$1:*"
 fi
-images=($(docker image ls --format="$image_format" --filter='dangling=false'))
+images=($(docker image ls --format="{{.Repository}}:{{.Tag}}" --filter='dangling=false' --filter="reference=$image_reference"))
 
-# If a image tag was not supplied ensure that we don't have multiple versions of an image
-# If we do print a message telling the user to be more specific in specifying the image name
-if [[ "$1" != *":"* ]] && contains_multiple "$1" "${images[@]}"; then
+# If we matched multiple images print a message teling the user to be more specific
+if  [[ "${#images[@]}" -gt 1 ]]; then
     echo "Multiple $1 images found. Please specify a version"
-    # Print all version of the image
-    docker image ls --format='{{.Repository}}:{{.Tag}}' --filter='dangling=false' --filter="reference=$1:*"
+    # Print all found version of the image
+    printf '%s\n' "${images[@]}"
     exit 1
 fi
 
-if contains "$1" "${images[@]}"; then
-    # Creat a unique name for the container image
+if [[ "${#images[@]}" -eq 1 ]]; then
+    # Create a unique name for the container image
     temp_instance_index=1
     for container in "${containers[@]}"; do
         if [[ "$container" = 'temp_instance_'* ]]; then
@@ -59,8 +58,8 @@ if contains "$1" "${images[@]}"; then
         fi
     done
 
-    echo "Found Image named '$1', creating container temp_instance_$temp_instance_index using image"
-    docker run "${@:2}" --name "temp_instance_$temp_instance_index" -ti --rm "$1" /bin/bash
+    echo "Found Image named '${images[0]}', creating container temp_instance_$temp_instance_index using image"
+    docker run "${@:2}" --name "temp_instance_$temp_instance_index" -ti --rm "${images[0]}" /bin/bash
     exit 0
 fi
 
