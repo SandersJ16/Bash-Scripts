@@ -41,10 +41,8 @@ fi
 if [[ "${#images[@]}" -eq 1 ]]; then
     # Create a unique name for the container image
     temp_instance_index=1
-    for container in "${containers[@]}"; do
-        if [[ "$container" = 'temp_instance_'* ]]; then
-            temp_instance_index=$(($temp_instance_index + 1))
-        fi
+    while contains "temp_instance_$temp_instance_index" "${containers[@]}"; do
+      temp_instance_index=$(($temp_instance_index + 1))
     done
 
     echo "Found Image named '${images[0]}', creating container temp_instance_$temp_instance_index using image"
