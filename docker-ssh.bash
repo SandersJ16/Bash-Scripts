@@ -7,17 +7,6 @@ contains () {
   return 1
 }
 
-contains_multiple () {
-  local e match="$1" c=0
-  shift
-  for e; do [[ "$e" = "$match" ]] && c=$(($c + 1)); done
-  if [ $c -gt 1 ]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
 #----------------------------------------------------------------------------------------------------------
 # Check if a container with the supplied name already exists if it does exec into it
 #----------------------------------------------------------------------------------------------------------
