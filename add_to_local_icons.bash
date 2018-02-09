@@ -1,5 +1,15 @@
 #!/bin/bash
 
+#------------------------------------------------------------------------------------------------------------
+# This script  can be used to take an image and make it available for use as an icon for a linux system.
+# It take two arguments, the path to an image and the name you want to give the image
+#
+# It will then take this image, converts it to a PNG if it is not already, resize it to multiple sizes
+# and copy it to your users local icon locations for each size.
+#
+# ex. bash add_to_local_icons.bash ./custom_sublime_text_image.jpeg "sublime-logo"
+#------------------------------------------------------------------------------------------------------------
+
 if [ "$#" -ne 2 ]; then
 	echo "Wrong number of variables supplied"
 	exit 1
