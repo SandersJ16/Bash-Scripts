@@ -1,56 +1,53 @@
 #!/bin/bash
 
-case_sensitive=true
-declare search_for=()
+find_type="regex"
+additional_grep_args=""
+find_limiter="( -type d -printf %p/\n , -type f -print )"
 
-getOptions()
-{	
-	for option_string in "$@"; do
-		if [[ "$option_string" =~ -.* ]] ; then
-			local option=`echo "$option_string" | sed s/-//`
-			#if invalid option
-			if [[ $option == *[^$accepted_options]* ]]; then 
-				echo "-$option is invalid option"
-				exit 1
-			else
-				options=$options$option 
-			fi
-		else
-			search_for+=("$option_string")
-		fi
-	done
-}
+declare -a arguments
 
-setOptions()
-{
-	local options=""
-	local accepted_options="i"
-	getOptions "$@"
+while [ "$#" -gt 0 ]; do
+    while getopts ":hidf" opt; do
+      case $opt in
+        i)
+          find_type="iregex"
+          additional_grep_args="i"
+          ;;
 
-	if [[ $options == *i* ]]; then
-		case_sensitive=false
-	fi
-}
+        d)
+          find_limiter="-type d -printf %p/\n"
+          ;;
+        f)
+          find_limiter="-type f"
+          ;;
+        h)
+          cat <<EOF
+    Search For any folders or files located in the current directory or a subdirectory that contain the regex passed in
+    Usage: search [-i] search_string
+       -i   Make search case insensitive
+       -d   Display only matching directories
+       -f   Display only matching files
+       -h   displays basic help
+EOF
+          exit 0
+          ;;
+        \?)
+          echo "Invalid option: -$OPTARG" >&2
+          exit 1
+          ;;
+        :)
+          echo "Option -$OPTARG requires an argument." >&2
+          exit 1
+          ;;
+      esac
+    done
+    shift $(($OPTIND - 1))
 
 
-setOptions "$@"
-if [ ${#search_for[@]} != 0 ]; then
-	#find . -type d -iname "*$1*" | grep "$1" --color=always
-	
-	grep_options="P"
-	if [ $case_sensitive == false ]; then
-		grep_options="iP"
-	fi
-	
-	for search_item in "${search_for[@]}"; do
-		if [ ${#search_for[@]} -gt 1 ]; then
-			echo ""
-			echo -e "\e[1;36m---------------------------$search_item---------------------------\e[0m"
-		fi
-		
-		find . 2>/dev/null -print | grep -$grep_options --color=always "$search_item(?=([^/]*$))"
-	done
-	echo -e "\e[1;36m---------------------------Done---------------------------\e[0m"
-else
-	echo "No arguments given"
-fi
+    while [[ "$#" -gt 0 ]] && [[ "${1:0:1}" != "-" ]]; do
+        arguments=("${arguments[@]}" "$1")
+        shift
+    done
+done
+
+eval 'find . -regextype posix-extended -${find_type} ".*${arguments[0]}.*" ${find_limiter} 2>/dev/null |grep -P${additional_grep_args}e "${arguments[0]}(?=[^/]*/?$)" --color=auto'
