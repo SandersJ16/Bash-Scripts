@@ -23,11 +23,11 @@ while [ "$#" -gt 0 ]; do
           find_limiter="-type f"
           ;;
         n)
-		  show_colors=false
-		  ;;
-		a)
-		  full_path_search=true
-		  ;;
+          show_colors=false
+          ;;
+        a)
+          full_path_search=true
+          ;;
         h)
           cat <<EOF
     Search For any folders or files located in the current directory or a subdirectory that contain the regex passed in
@@ -63,8 +63,8 @@ done
 
 # If there were no arguments exit
 if [ "${#arguments[@]}" -eq 0 ]; then
-	echo "No arguments given"
-	exit 1
+    echo "No arguments given"
+    exit 1
 fi
 
 # Find all file paths and folder paths that match the regex of the first argument
@@ -72,12 +72,12 @@ find_argument="${arguments[0]}"
 
 # Replace trailing $ with $ or forward slash (grep will take over from there)
 if [[ "${find_argument}" == *$ ]]; then
-	find_argument="${find_argument::-1}(/|$)"
+    find_argument="${find_argument::-1}(/|$)"
 fi
 
 # Replace ^ with forward slash (grep will take over from there)
 if [[ "${find_argument}" == ^* ]]; then
-	find_argument="/${find_argument:1}"
+    find_argument="/${find_argument:1}"
 fi
 
 find_command='find . -regextype posix-extended -${find_type} ".*${find_argument}.*" ${find_limiter} 2>/dev/null'
@@ -85,35 +85,35 @@ find_command='find . -regextype posix-extended -${find_type} ".*${find_argument}
 # For each argument supplied perform a grep on the results of the seach, limiting results and providing colouring
 grep_commands=''
 for (( i=0; i<${#arguments[@]}; i++ )); do
-	argument="${arguments[$i]}"
+    argument="${arguments[$i]}"
 
-	if [[ "$full_path_search" == true ]]; then
-		if [[ "${argument}" == *$ ]]; then
-			argument="${argument::-1}"
-			regex_modifer="(?=/|$)"
-		else
-			regex_modifer=""
-		fi
-	else
-		if [[ "${argument}" == *$ ]]; then
-			argument="${argument::-1}"
-			regex_modifer="(?=/?$)"
-		else
-			regex_modifer="(?=[^/]*/?$)"
-		fi
-	fi
+    if [[ "$full_path_search" == true ]]; then
+        if [[ "${argument}" == *$ ]]; then
+            argument="${argument::-1}"
+            regex_modifer="(?=/|$)"
+        else
+            regex_modifer=""
+        fi
+    else
+        if [[ "${argument}" == *$ ]]; then
+            argument="${argument::-1}"
+            regex_modifer="(?=/?$)"
+        else
+            regex_modifer="(?=[^/]*/?$)"
+        fi
+    fi
 
-	# If an argument ends with
-	if [[ "${argument}" == ^* ]]; then
-		argument="(?<=/)${argument:1}"
-	fi
+    # If an argument ends with
+    if [[ "${argument}" == ^* ]]; then
+        argument="(?<=/)${argument:1}"
+    fi
 
-	grep_commands="${grep_commands} | grep -P${additional_grep_args}e \"${argument}${regex_modifer}\""
+    grep_commands="${grep_commands} | grep -P${additional_grep_args}e \"${argument}${regex_modifer}\""
 
-	# By default force colour to pass through pipes highlighting all matching parts
-	if [[ "$show_colors" == true ]]; then
-		grep_commands="${grep_commands} --color=always"
-	fi
+    # By default force colour to pass through pipes highlighting all matching parts
+    if [[ "$show_colors" == true ]]; then
+        grep_commands="${grep_commands} --color=always"
+    fi
 done
 
 eval "${find_command}${grep_commands}"
