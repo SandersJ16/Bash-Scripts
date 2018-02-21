@@ -68,22 +68,47 @@ if [ "${#arguments[@]}" -eq 0 ]; then
 fi
 
 # Find all file paths and folder paths that match the regex of the first argument
-find_command='find . -regextype posix-extended -${find_type} ".*${arguments[0]}.*" ${find_limiter} 2>/dev/null'
+find_argument="${arguments[0]}"
+
+# Replace trailing $ with $ or forward slash (grep will take over from there)
+if [[ "${find_argument}" == *$ ]]; then
+	find_argument="${find_argument::-1}(/|$)"
+fi
+
+# Replace ^ with forward slash (grep will take over from there)
+if [[ "${find_argument}" == ^* ]]; then
+	find_argument="/${find_argument:1}"
+fi
+
+find_command='find . -regextype posix-extended -${find_type} ".*${find_argument}.*" ${find_limiter} 2>/dev/null'
 
 # For each argument supplied perform a grep on the results of the seach, limiting results and providing colouring
 grep_commands=''
 for (( i=0; i<${#arguments[@]}; i++ )); do
+	argument="${arguments[$i]}"
 
-	# If an argument ends with a $ then we modify our search so it works for
-	if [[ "${arguments[$i]}" == *$ ]]; then
-		grep_commands="${grep_commands} | grep -P${additional_grep_args}e \"${arguments[$i]::-1}(?=/?$)\""
-	else
-		if [[ "$full_path_search" == true ]];then
-			grep_commands="${grep_commands} | grep -P${additional_grep_args}e \"${arguments[$i]}\""
+	if [[ "$full_path_search" == true ]]; then
+		if [[ "${argument}" == *$ ]]; then
+			argument="${argument::-1}"
+			regex_modifer="(?=/|$)"
 		else
-			grep_commands="${grep_commands} | grep -P${additional_grep_args}e \"${arguments[$i]}(?=[^/]*/?$)\""
+			regex_modifer=""
+		fi
+	else
+		if [[ "${argument}" == *$ ]]; then
+			argument="${argument::-1}"
+			regex_modifer="(?=/?$)"
+		else
+			regex_modifer="(?=[^/]*/?$)"
 		fi
 	fi
+
+	# If an argument ends with
+	if [[ "${argument}" == ^* ]]; then
+		argument="(?<=/)${argument:1}"
+	fi
+
+	grep_commands="${grep_commands} | grep -P${additional_grep_args}e \"${argument}${regex_modifer}\""
 
 	# By default force colour to pass through pipes highlighting all matching parts
 	if [[ "$show_colors" == true ]]; then
