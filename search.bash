@@ -4,9 +4,7 @@ find_type="regex"
 additional_grep_args=""
 find_limiter="( -type d -printf %p/\n , -type f -print )"
 show_colors=true
-
-# Look ahead limiting grep to only matching file name or directory name
-regex_modifier="(?=[^/]*/?$)"
+full_path_search=false
 
 declare -a arguments
 
@@ -28,7 +26,7 @@ while [ "$#" -gt 0 ]; do
 		  show_colors=false
 		  ;;
 		a)
-		  regex_modifier=""
+		  full_path_search=true
 		  ;;
         h)
           cat <<EOF
@@ -75,7 +73,17 @@ find_command='find . -regextype posix-extended -${find_type} ".*${arguments[0]}.
 # For each argument supplied perform a grep on the results of the seach, limiting results and providing colouring
 grep_commands=''
 for (( i=0; i<${#arguments[@]}; i++ )); do
-	grep_commands="${grep_commands} | grep -P${additional_grep_args}e \"${arguments[$i]}${regex_modifier}\""
+
+	# If an argument ends with a $ then we modify our search so it works for
+	if [[ "${arguments[$i]}" == *$ ]]; then
+		grep_commands="${grep_commands} | grep -P${additional_grep_args}e \"${arguments[$i]::-1}(?=/?$)\""
+	else
+		if [[ "$full_path_search" == true ]];then
+			grep_commands="${grep_commands} | grep -P${additional_grep_args}e \"${arguments[$i]}\""
+		else
+			grep_commands="${grep_commands} | grep -P${additional_grep_args}e \"${arguments[$i]}(?=[^/]*/?$)\""
+		fi
+	fi
 
 	# By default force colour to pass through pipes highlighting all matching parts
 	if [[ "$show_colors" == true ]]; then
