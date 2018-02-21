@@ -4,6 +4,8 @@ find_type="regex"
 additional_grep_args=""
 find_limiter="( -type d -printf %p/\n , -type f -print )"
 show_colors=true
+
+# Look ahead limiting grep to only matching file name or directory name
 regex_modifier="(?=[^/]*/?$)"
 
 declare -a arguments
@@ -31,7 +33,7 @@ while [ "$#" -gt 0 ]; do
         h)
           cat <<EOF
     Search For any folders or files located in the current directory or a subdirectory that contain the regex passed in
-    Usage: search [-i] search_string
+    Usage: search [-iadfn] search_string
        -i   Make search case insensitive
        -a   Match on full path instead of just directory or file name
        -d   Display only matching directories
@@ -51,31 +53,34 @@ EOF
           ;;
       esac
     done
-    shift $(($OPTIND - 1))
+    shift $(($OPTIND - 1)) #remove processed arguments
 
-
+    # Continue looping through all arguments, store non options in $arguments array
+    # This allows us to place options after arguments but still use getopts to process them
     while [[ "$#" -gt 0 ]] && [[ "${1:0:1}" != "-" ]]; do
         arguments=("${arguments[@]}" "$1")
-        shift
+        shift #remove processed arguments
     done
 done
 
-
+# If there were no arguments exit
 if [ "${#arguments[@]}" -eq 0 ]; then
 	echo "No arguments given"
 	exit 1
 fi
 
+# Find all file paths and folder paths that match the regex of the first argument
 find_command='find . -regextype posix-extended -${find_type} ".*${arguments[0]}.*" ${find_limiter} 2>/dev/null'
 
+# For each argument supplied perform a grep on the results of the seach, limiting results and providing colouring
 grep_commands=''
 for (( i=0; i<${#arguments[@]}; i++ )); do
 	grep_commands="${grep_commands} | grep -P${additional_grep_args}e \"${arguments[$i]}${regex_modifier}\""
 
+	# By default force colour to pass through pipes highlighting all matching parts
 	if [[ "$show_colors" == true ]]; then
 		grep_commands="${grep_commands} --color=always"
 	fi
 done
-
 
 eval "${find_command}${grep_commands}"
