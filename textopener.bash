@@ -1,5 +1,5 @@
 #!/bin/bash
 
 for var in "$@";do
-	gnome-open "$var" & disown
+	nohup gnome-open "$var" >>/tmp/nohup.out 2>&1 &
 done
