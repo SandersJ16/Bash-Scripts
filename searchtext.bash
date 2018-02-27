@@ -6,7 +6,6 @@ other_args=""
 last_arg=""
 
 declare -a other_search_terms
-
 for input in "$@"; do
   if [[ ! "$input" =~ ^-.* ]] && [[ -z "$search_term" ]]; then
     search_term=`echo "$input" | sed 's/"/\\\"/'`
@@ -15,7 +14,7 @@ for input in "$@"; do
   elif [[ "$input" =~ -.* ]]; then
     other_args="$other_args $input"
   else
-    if [[ "${last_arg:0:2}" != "--" ]] && [[ "efmdABCD" =~ .*"${last_arg: -1}".* ]]; then
+    if [[ "${last_arg:0:1}" == "-" ]] && [[ "${last_arg:0:2}" != "--" ]] && [[ "efmdABCD" =~ .*"${last_arg: -1}".* ]]; then
       other_args="$other_args $input"
     else
       other_search_terms=("${other_search_terms[@]}" "$input")
@@ -37,7 +36,11 @@ if [ $exclude_defaults = true ]; then
 fi
 
 for (( i=0; i<${#other_search_terms[@]}; i++ )); do
-    grep_command="$grep_command | grep -Pe \"${other_search_terms[$i]}(?!(.*(\\x1b\\[[0-9;]*[mGKH])[-:](\\x1b\\[[0-9;]*[mGKH])+\d+(\\x1b\\[[0-9;]*[mGKH])+[-:]))\" --color=always"
+    search_term="${other_search_terms[$i]}"
+    if [[ "$search_term" =~ "^".* ]];then
+      search_term="(?<=[:-]\\x1b\\[m\\x1b\\[K)${search_term:1}"
+    fi
+    grep_command="$grep_command | grep -Pe \"$search_term(?!(.*(\\x1b\\[[0-9;]*[mGKH])[-:](\\x1b\\[[0-9;]*[mGKH])+\d+(\\x1b\\[[0-9;]*[mGKH])+[-:]))\" --color=always"
 done
 eval "$grep_command"
 
