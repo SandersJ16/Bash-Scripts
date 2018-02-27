@@ -17,7 +17,7 @@ for input in "$@"; do
     grep_options="${grep_options}i"
   elif [[ "$input" == "-v" ]]; then # TODO: Doesn't really work as intended yet
     grep_options="${grep_options}v"
-  elif [[ "$input" =~ -.* ]]; then
+  elif [[ "$input" =~ ^-.* ]]; then
     other_args="$other_args $input"
   else
     # If the last argument was for one of the command flags "efmdABCD" then
@@ -54,13 +54,13 @@ for (( i=0; i<${#other_search_terms[@]}; i++ )); do
 
   # If search term starts with ^ then replace the carrot with regex look behind for ":{color code}"
   # this regex is to make carrots match where the begging of the line would be
-  if [[ "$search_term" =~ "^".* ]]; then
+  if [[ "$search_term" =~ ^"^".* ]]; then
     search_term="(?<=[:-]\\x1b\\[m\\x1b\\[K)${search_term:1}"
   fi
 
   # If search term does not end with a $ then add regex look ahead to make sure that what we are
   # matching is in the file contents and not the file name
-  if [[ ! "$search_term" =~ .*"$" ]]; then
+  if [[ ! "$search_term" =~ .*"$"$ ]]; then
     search_term="${search_term}(?!(.*(\\x1b\\[[0-9;]*[mGKH])[-:](\\x1b\\[[0-9;]*[mGKH])+\d+(\\x1b\\[[0-9;]*[mGKH])+[-:]))"
   fi
 
