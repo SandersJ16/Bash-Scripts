@@ -7,6 +7,7 @@ other_args=""
 last_arg=""
 
 declare -a other_search_terms
+
 for input in "$@"; do
   if [[ ! "$input" =~ ^-.* ]] && [[ -z "$search_term" ]]; then
     search_term=`echo "$input" | sed 's/"/\\\"/'`
@@ -19,6 +20,8 @@ for input in "$@"; do
   elif [[ "$input" =~ -.* ]]; then
     other_args="$other_args $input"
   else
+    # If the last argument was for one of the command flags "efmdABCD" then
+    # assume this argument is the value for that command and not a search term
     if [[ "${last_arg:0:1}" == "-" ]] && [[ "${last_arg:0:2}" != "--" ]] && [[ "efmdABCD" =~ .*"${last_arg: -1}".* ]]; then
       other_args="$other_args $input"
     else
@@ -38,7 +41,7 @@ else
 fi
 
 # Search all non binary files for any regex matching the first searchterm
-# pass any additional comand flags to this command as well
+# pass any additional command flags to this command as well
 grep_command="grep -Inr . 2>/dev/null --color=$color ${grep_options} -e \"$search_term\" $other_args"
 if [ $exclude_defaults = true ]; then
   #list of directories and file types to exclude by default, will not be excluded if -V flag is used
