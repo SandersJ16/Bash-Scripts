@@ -14,7 +14,7 @@ for input in "$@"; do
     exclude_defaults=false
   elif [[ "$input" == "-i" ]]; then
     grep_options="${grep_options}i"
-  elif [[ "$input" == "-v" ]]; then
+  elif [[ "$input" == "-v" ]]; then # TODO: Doesn't really work as intended yet
     grep_options="${grep_options}v"
   elif [[ "$input" =~ -.* ]]; then
     other_args="$other_args $input"
