@@ -1,7 +1,7 @@
 #!/bin/bash
 
-case_insenitive=false
 exclude_defaults=true
+grep_options="-P"
 search_term=""
 other_args=""
 last_arg=""
@@ -10,11 +10,12 @@ declare -a other_search_terms
 for input in "$@"; do
   if [[ ! "$input" =~ ^-.* ]] && [[ -z "$search_term" ]]; then
     search_term=`echo "$input" | sed 's/"/\\\"/'`
-  elif [[ "$input" == "-v" ]]; then
+  elif [[ "$input" == "-V" ]]; then
     exclude_defaults=false
   elif [[ "$input" == "-i" ]]; then
-    case_insenitive=true
-    other_args="$other_args $input"
+    grep_options="${grep_options}i"
+  elif [[ "$input" == "-v" ]]; then
+    grep_options="${grep_options}v"
   elif [[ "$input" =~ -.* ]]; then
     other_args="$other_args $input"
   else
@@ -28,33 +29,39 @@ for input in "$@"; do
   last_arg="$input"
 done
 
-
+# If we are only searching for one string then use color auto
+# otherwise use always to force highlighting of all strings
 if [ "${#other_search_terms[@]}" -eq 0 ]; then
   color="auto"
 else
   color="always"
 fi
 
-grep_command="grep -Inr . 2>/dev/null --color=$color -Pe \"$search_term\" $other_args"
+# Search all non binary files for any regex matching the first searchterm
+# pass any additional comand flags to this command as well
+grep_command="grep -Inr . 2>/dev/null --color=$color ${grep_options} -e \"$search_term\" $other_args"
 if [ $exclude_defaults = true ]; then
+  #list of directories and file types to exclude by default, will not be excluded if -V flag is used
   grep_command="$grep_command --exclude-dir=.git --exclude-dir=node_modules --exclude=.tags --exclude=\"*.min.js\" --exclude=\"*.mo\" --exclude=jit-yc.js"
 fi
 
-
-if  $case_insenitive = true ]; then
-  grep_options="iPe"
-else
-  grep_options="Pe"
-fi
+# If other search terms supplied perform grep on on original results for new search term
 for (( i=0; i<${#other_search_terms[@]}; i++ )); do
-    search_term="${other_search_terms[$i]}"
-    if [[ "$search_term" =~ "^".* ]];then
-      search_term="(?<=[:-]\\x1b\\[m\\x1b\\[K)${search_term:1}"
-    fi
-    if [[ ! "$search_term" =~ .*"$" ]];then
-      search_term="${search_term}(?!(.*(\\x1b\\[[0-9;]*[mGKH])[-:](\\x1b\\[[0-9;]*[mGKH])+\d+(\\x1b\\[[0-9;]*[mGKH])+[-:]))"
-    fi
-    grep_command="$grep_command | grep -${grep_options} \"${search_term}\" --color=always"
+  search_term="${other_search_terms[$i]}"
+
+  # If search term starts with ^ then replace the carrot with regex look behind for ":{color code}"
+  # this regex is to make carrots match where the begging of the line would be
+  if [[ "$search_term" =~ "^".* ]]; then
+    search_term="(?<=[:-]\\x1b\\[m\\x1b\\[K)${search_term:1}"
+  fi
+
+  # If search term does not end with a $ then add regex look ahead to make sure that what we are
+  # matching is in the file contents and not the file name
+  if [[ ! "$search_term" =~ .*"$" ]]; then
+    search_term="${search_term}(?!(.*(\\x1b\\[[0-9;]*[mGKH])[-:](\\x1b\\[[0-9;]*[mGKH])+\d+(\\x1b\\[[0-9;]*[mGKH])+[-:]))"
+  fi
+
+  grep_command="$grep_command | grep ${grep_options} -e \"${search_term}\" --color=always"
 done
 eval "$grep_command"
 
