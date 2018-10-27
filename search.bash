@@ -5,17 +5,18 @@ additional_grep_args=""
 find_limiter="( -type d -printf %p/\n , -type f -print )"
 show_colors=true
 full_path_search=false
+exclude_special_folders_content=true
+special_folders=(".git")
 
 declare -a arguments
 
 while [ "$#" -gt 0 ]; do
-    while getopts ":hidfna" opt; do
+    while getopts ":hidfnaA" opt; do
       case $opt in
         i)
           find_type="iregex"
           additional_grep_args="i"
           ;;
-
         d)
           find_limiter="-type d -printf %p/\n"
           ;;
@@ -28,6 +29,9 @@ while [ "$#" -gt 0 ]; do
         a)
           full_path_search=true
           ;;
+        A)
+          exclude_special_folders_content=false
+          ;;
         h)
           cat <<EOF
     Search For any folders or files located in the current directory or a subdirectory that contain the regex passed in
@@ -37,6 +41,7 @@ while [ "$#" -gt 0 ]; do
        -d   Display only matching directories
        -f   Display only matching files
        -n   Don't color output
+       -A   Match all file in all subdirectories (don't ignore special directories)
        -h   displays basic help
 EOF
           exit 0
@@ -80,7 +85,15 @@ if [[ "${find_argument}" == ^* ]]; then
     find_argument="/${find_argument:1}"
 fi
 
-find_command='find . -regextype posix-extended -${find_type} ".*${find_argument}.*" ${find_limiter} 2>/dev/null'
+# Special folders that should be exclude from the
+find_exclude=""
+if [[ "$exclude_special_folders_content" == true ]]; then
+    for special_file in "${special_folders[@]}"; do
+       find_exclude=`printf "%s -not -path \"*/%s/*\"" "${find_exclude}" "${special_file}"`
+    done
+fi
+
+find_command='find . -regextype posix-extended -${find_type} ".*${find_argument}.*" ${find_exclude} ${find_limiter} 2>/dev/null'
 
 # For each argument supplied perform a grep on the results of the seach, limiting results and providing colouring
 grep_commands=''
