@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# The version of the grep command that will be used
+base_grep_command='grep'
 # If the default exclude files should be ignored
 exclude_defaults=true
 # List of options that grep will be modified with
@@ -53,7 +55,7 @@ fi
 
 # Search all non binary files for any regex matching the first searchterm
 # pass any additional command flags to this command as well
-grep_command="grep -Inr . 2>/dev/null --color=$color ${grep_options} -e \"$search_term\" $other_args"
+grep_command="$base_grep_command -Inr . 2>/dev/null --color=$color ${grep_options} -e \"$search_term\" $other_args"
 if [ $exclude_defaults = true ]; then
   #list of directories and file types to exclude by default, will not be excluded if -V flag is used
   declare -a exclude_dirs=(".git" "" "node_modules")
@@ -84,7 +86,7 @@ for (( i=0; i<${#other_search_terms[@]}; i++ )); do
     search_term="${search_term}(?!(.*(\\x1b\\[[0-9;]*[mGKH])[-:](\\x1b\\[[0-9;]*[mGKH])+\d+(\\x1b\\[[0-9;]*[mGKH])+[-:]))"
   fi
 
-  grep_command="$grep_command | grep ${grep_options} -e \"${search_term}\" --color=always"
+  grep_command="$grep_command | $base_grep_command ${grep_options} -e \"${search_term}\" --color=always"
 done
 
 if [ $echo_grep_command == true ]; then
