@@ -35,5 +35,7 @@ fi
 declare -a sizes=("16x16" "32x32" "48x48" "128x128" "256x256")
 
 for size in "${sizes[@]}"; do
-	convert "$image" -resize "$size" "/home/$USER/.local/share/icons/hicolor/$size/apps/$name.png"
+    icon_path="/home/$USER/.local/share/icons/hicolor/$size/apps"
+    mkdir -p "$icon_path"
+	convert "$image" -resize "$size" "$icon_path/$name.png"
 done
