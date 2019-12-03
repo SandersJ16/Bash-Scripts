@@ -1,17 +1,25 @@
 #!/bin/bash
 
-print_grep=false
+# If the default exclude files should be ignored
 exclude_defaults=true
+# List of options that grep will be modified with
 grep_options="-P"
+# If the command should be excuted or printed
+echo_grep_command=false
+# The primary search term we are looking for
 search_term=""
+# Additional grep options passed thorugh
 other_args=""
+# The previously processed argument,
+# used to help process current argument when looping through
 last_arg=""
 
+# Additional regexes to search for
 declare -a other_search_terms
 
 for input in "$@"; do
   if [[ ! "$input" =~ ^-.* ]] && [[ -z "$search_term" ]]; then
-    search_term=`echo "$input" | sed 's/"/\\\"/'`
+    search_term=`echo "$input" | sed 's/"/\\\"/'` # set the search term, escapes double quotes
   elif [[ "$input" == "-V" ]]; then
     exclude_defaults=false
   elif [[ "$input" == "-i" ]]; then
@@ -19,7 +27,7 @@ for input in "$@"; do
   elif [[ "$input" == "-v" ]]; then # TODO: Doesn't really work as intended yet
     grep_options="${grep_options}v"
   elif [[ "$input" == "-p" ]]; then
-    print_grep=true
+    echo_grep_command=true
   elif [[ "$input" =~ ^-.* ]]; then
     other_args="$other_args $input"
   else
@@ -79,7 +87,7 @@ for (( i=0; i<${#other_search_terms[@]}; i++ )); do
   grep_command="$grep_command | grep ${grep_options} -e \"${search_term}\" --color=always"
 done
 
-if [ $print_grep == true ]; then
+if [ $echo_grep_command == true ]; then
   echo "$grep_command"
 else
   eval "$grep_command"
