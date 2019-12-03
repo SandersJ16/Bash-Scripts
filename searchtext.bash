@@ -1,5 +1,6 @@
 #!/bin/bash
 
+print_grep=false
 exclude_defaults=true
 grep_options="-P"
 search_term=""
@@ -17,6 +18,8 @@ for input in "$@"; do
     grep_options="${grep_options}i"
   elif [[ "$input" == "-v" ]]; then # TODO: Doesn't really work as intended yet
     grep_options="${grep_options}v"
+  elif [[ "$input" == "-p" ]]; then
+    print_grep=true
   elif [[ "$input" =~ ^-.* ]]; then
     other_args="$other_args $input"
   else
@@ -66,6 +69,11 @@ for (( i=0; i<${#other_search_terms[@]}; i++ )); do
 
   grep_command="$grep_command | grep ${grep_options} -e \"${search_term}\" --color=always"
 done
-eval "$grep_command"
+
+if [ $print_grep == true ]; then
+  echo "$grep_command"
+else
+  eval "$grep_command"
+fi
 
 echo -e "\e[1;36m---------------------------Done---------------------------\e[0m"
