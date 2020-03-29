@@ -58,7 +58,7 @@ fi
 grep_command="$base_grep_command -Inr . 2>/dev/null --color=$color ${grep_options} -e \"$search_term\" $other_args"
 if [ $exclude_defaults = true ]; then
   #list of directories and file types to exclude by default, will not be excluded if -V flag is used
-  declare -a exclude_dirs=(".git" "" "node_modules")
+  declare -a exclude_dirs=(".git" "node_modules")
   declare -a exclude_files=(".tags" "*.min.js" "*.mo" "*.po" "jit-yc.js" "*.min.css")
 
   for exclude_dir in "${exclude_dirs[@]}"; do
