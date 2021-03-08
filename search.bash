@@ -2,16 +2,16 @@
 
 find_type="regex"
 additional_grep_args=""
-find_limiter="( -type d -printf %p/\n , -type f -print )"
+find_limiter='-type d -printf "%p/\n" , -type f -print'
 show_colors=true
 full_path_search=false
 exclude_special_folders_content=true
-special_folders=(".git")
+print_command=false
 
 declare -a arguments
 
 while [ "$#" -gt 0 ]; do
-    while getopts ":hidfnaA" opt; do
+    while getopts ":hidfnapA" opt; do
       case $opt in
         i)
           find_type="iregex"
@@ -31,6 +31,9 @@ while [ "$#" -gt 0 ]; do
           ;;
         A)
           exclude_special_folders_content=false
+          ;;
+        p)
+          print_command=true
           ;;
         h)
           cat <<EOF
@@ -88,12 +91,13 @@ fi
 # Special folders that should be exclude from the
 find_exclude=""
 if [[ "$exclude_special_folders_content" == true ]]; then
+    special_folders=(".git")
     for special_file in "${special_folders[@]}"; do
        find_exclude=`printf "%s -not -path \"*/%s/*\"" "${find_exclude}" "${special_file}"`
     done
 fi
 
-find_command='find . -regextype posix-extended -${find_type} ".*${find_argument}.*" ${find_exclude} ${find_limiter} 2>/dev/null'
+find_command="find . -regextype posix-extended -${find_type} \".*${find_argument}.*\" ${find_exclude} ${find_limiter} 2>/dev/null"
 
 # For each argument supplied perform a grep on the results of the seach, limiting results and providing colouring
 grep_commands=''
@@ -129,4 +133,8 @@ for (( i=0; i<${#arguments[@]}; i++ )); do
     fi
 done
 
-eval "${find_command}${grep_commands}"
+if [ $print_command == true ];then
+  echo "${find_command}${grep_commands}"
+else
+  eval "${find_command}${grep_commands}"
+fi
