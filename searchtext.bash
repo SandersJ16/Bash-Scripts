@@ -21,7 +21,7 @@ declare -a other_search_terms
 
 for input in "$@"; do
   if [[ ! "$input" =~ ^-.* ]] && [[ -z "$search_term" ]]; then
-    search_term=`echo "$input" | sed 's/"/\\\"/'` # set the search term, escapes double quotes
+    search_term=`echo "$input" | sed 's/"/\\\"/g'` # set the search term, escapes double quotes
   elif [[ "$input" == "-V" ]]; then
     exclude_defaults=false
   elif [[ "$input" == "-i" ]]; then
@@ -59,7 +59,7 @@ grep_command="$base_grep_command -Inr . 2>/dev/null --color=$color ${grep_option
 if [ $exclude_defaults = true ]; then
   #list of directories and file types to exclude by default, will not be excluded if -V flag is used
   declare -a exclude_dirs=(".git" "node_modules" "vendor" "log")
-  declare -a exclude_files=(".tags" "*.min.js" "*.mo" "*.po" "jit-yc.js" "*.min.css" "*bundle.js")
+  declare -a exclude_files=(".tags" "*.min.js" "*.mo" "*.po" "jit-yc.js" "*.min.css" "*bundle.js" "*.css.map")
 
   for exclude_dir in "${exclude_dirs[@]}"; do
     grep_command="$grep_command --exclude-dir=\"$exclude_dir\""
