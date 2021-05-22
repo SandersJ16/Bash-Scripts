@@ -32,6 +32,7 @@ Options:
   -V                          Include all files (by default special files are ignored)
   -N                          Don't show line numbers
   -S                          Suppress text "done" when search completes
+  -M                          Multi-line matching, allows matching \n
   -f PATH                     PATH that will be search
       --help                  Display this help text and exit
 Most Grep options supported. Common options are (use grep --help) for all options:
@@ -86,10 +87,14 @@ declare -a search_locations
 
 while [ "$#" -gt 0 ]; do
     OPTIND=1
-    while getopts ":ivVSNpf:e:m:d:A:B:C:D:-:" opt "$@"; do
+    while getopts ":ivMVSNpf:e:m:d:A:B:C:D:-:" opt "$@"; do
       case $opt in
         i|v)
           base_grep_options="${base_grep_options}${opt}"
+          ;;
+        M)
+          grep_executable="pcregrep"
+          base_grep_options="-M${base_grep_options:2}"
           ;;
         V)
           exclude_defaults=false
@@ -171,7 +176,7 @@ fi
 
 # Search all non binary files for any regex matching the first search term
 # pass any additional command flags to this command as well
-grep_command="$grep_executable $default_grep_options ${search_locations[@]} --color=$color ${base_grep_options}${extra_grep_options} -e \"${search_terms[0]}\" $other_grep_options"
+grep_command="$grep_executable $default_grep_options --color=$color ${base_grep_options}${extra_grep_options} -e \"${search_terms[0]}\" $other_grep_options ${search_locations[@]}"
 if [ $exclude_defaults ==  true ]; then
   #list of directories and file types to exclude by default, will not be excluded if -V flag is used
   declare -a exclude_dirs=(".git" "node_modules" "vendor" "log")
