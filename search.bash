@@ -11,6 +11,7 @@ print_command=false
 declare -a arguments
 
 while [ "$#" -gt 0 ]; do
+    OPTIND=1
     while getopts ":hidfnapA" opt; do
       case $opt in
         i)
