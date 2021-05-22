@@ -1,5 +1,16 @@
 #!/bin/bash
 
+####################################################################################################################################
+#
+# Author: Justin Sanders
+#
+# This script is a wapper for grep that creates and runs grep commands best suited for searching directories of files for text.
+# This was made to shorten common grep commands I would run by adding useful defaults and allow multiple regex searches at once.
+# This script was designed with GNU grep in mind and is not very portable as a result since it defaults to using the PCRE regex
+# engine not available in most other version of grep.
+#
+####################################################################################################################################
+
 usage() {
   cat <<EOF
 Wrapper for grep, search for regex pattern(s) in file(s)
@@ -41,12 +52,18 @@ Following grep options currently only work when a single PATTERN is supplied:
 EOF
 }
 
+###########################################
+# Initialize Defaults
+###########################################
+
 # The executable that will be used as the grep command
 grep_executable='grep'
 # location we want to search, search is always recursive. Default is current directory
 search_location="."
 # If line numbers should be shown in the output
 show_line_numbers=true
+# Default grep options that will be applied, applied to grep for first search term only
+default_grep_options="-Isr"
 # Single character flag grep options that will be applied, applied to grep for all search terms if more than
 base_grep_options="-P"
 # Additional single character flag grep options that will be applied, applied to grep for first search term only
@@ -61,6 +78,10 @@ echo_grep_command=false
 display_completed_message=true
 # All terms to search for
 declare -a search_terms
+
+###########################################
+# Parse Arguments
+###########################################
 
 while [ "$#" -gt 0 ]; do
     OPTIND=1
@@ -123,7 +144,6 @@ if [ "${#search_terms[@]}" -eq 0 ]; then
   exit 1
 fi
 
-
 # If we are only searching for one string then use color auto
 # otherwise use always to force highlighting of all strings
 if [ "${#search_terms[@]}" -gt 1 ]; then
@@ -132,17 +152,20 @@ else
   color="auto"
 fi
 
-grep_base_options="-Isr"
 # Our default is to show line numbers, grep does not have a way
 # to override this to false once this option is set so we have created
 # our own -N to override it by never setting the -n flag at all
 if [ $show_line_numbers == true ]; then
-  grep_base_options="${grep_base_options}n"
+  default_grep_options="${default_grep_options}n"
 fi
+
+###########################################
+# Build Grep Command
+###########################################
 
 # Search all non binary files for any regex matching the first search term
 # pass any additional command flags to this command as well
-grep_command="$grep_executable $grep_base_options $search_location --color=$color ${base_grep_options}${extra_grep_options} -e \"${search_terms[0]}\" $other_grep_options"
+grep_command="$grep_executable $default_grep_options $search_location --color=$color ${base_grep_options}${extra_grep_options} -e \"${search_terms[0]}\" $other_grep_options"
 if [ $exclude_defaults ==  true ]; then
   #list of directories and file types to exclude by default, will not be excluded if -V flag is used
   declare -a exclude_dirs=(".git" "node_modules" "vendor" "log")
@@ -157,7 +180,7 @@ if [ $exclude_defaults ==  true ]; then
   done
 fi
 
-# If other search terms supplied perform grep on on original results for new search term
+# If more than one search term was supplied perform grep on on original results for additional search terms
 for (( i=1; i<${#search_terms[@]}; i++ )); do
   search_term="${search_terms[$i]}"
 
@@ -176,7 +199,10 @@ for (( i=1; i<${#search_terms[@]}; i++ )); do
   grep_command="$grep_command | $grep_executable ${base_grep_options} -e \"${search_term}\" --color=always"
 done
 
+###########################################
 # Print or evaluate grep command
+###########################################
+
 if [ $echo_grep_command == true ]; then
   echo "$grep_command"
 else
