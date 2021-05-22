@@ -6,6 +6,8 @@ exclude_defaults=true
 echo_ctags_command=false
 # If true then error messages won't be suppressed
 verbose=false
+# If symlinks should be followed
+follow_symlinks=false
 
 for input in "$@"; do
   if  [[ "$input" == "-V" ]]; then
@@ -14,6 +16,8 @@ for input in "$@"; do
     echo_ctags_command=true
   elif [[ "$input" == "-v" ]]; then
     verbose=true
+  elif [[ "$input" == "-l" ]]; then
+    follow_symlinks=true
   fi
 done
 
@@ -26,8 +30,14 @@ if [ "$path" == "/" ]; then
     exit 1
 fi
 
+if [ $follow_symlinks == true ]; then
+  links_command="--links=yes"
+else 
+  links_command="--links=no"
+fi
+
 delete_command="rm \".tags\""
-ctags_command="ctags -R -o \".tags\""
+ctags_command="ctags $links_command -R -o \".tags\""
 if [ $exclude_defaults = true ]; then
   #list of directories and file types to exclude by default, will not be excluded if -V flag is used
   declare -a exclude_dirs=(".git" "node_modules" "log")
