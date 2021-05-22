@@ -58,8 +58,6 @@ EOF
 
 # The executable that will be used as the grep command
 grep_executable='grep'
-# location we want to search, search is always recursive. Default is current directory
-search_location="."
 # If line numbers should be shown in the output
 show_line_numbers=true
 # Default grep options that will be applied, applied to grep for first search term only
@@ -78,6 +76,9 @@ echo_grep_command=false
 display_completed_message=true
 # All terms to search for
 declare -a search_terms
+# locations we want to search, search is always recursive
+# Default will be current directory if no values supplied
+declare -a search_locations
 
 ###########################################
 # Parse Arguments
@@ -100,7 +101,7 @@ while [ "$#" -gt 0 ]; do
           show_line_numbers=false
           ;;
         f)
-          search_location="${OPTARG}"
+          search_locations=("${search_locations[@]}" "${OPTARG}")
           ;;
         S)
           display_completed_message=false
@@ -144,6 +145,11 @@ if [ "${#search_terms[@]}" -eq 0 ]; then
   exit 1
 fi
 
+# If no search locations supplied user current directory
+if [ "${#search_locations[@]}" -eq 0 ]; then
+  search_locations=(".")
+fi
+
 # If we are only searching for one string then use color auto
 # otherwise use always to force highlighting of all strings
 if [ "${#search_terms[@]}" -gt 1 ]; then
@@ -160,12 +166,12 @@ if [ $show_line_numbers == true ]; then
 fi
 
 ###########################################
-# Build Grep Command
+# Build grep Command
 ###########################################
 
 # Search all non binary files for any regex matching the first search term
 # pass any additional command flags to this command as well
-grep_command="$grep_executable $default_grep_options $search_location --color=$color ${base_grep_options}${extra_grep_options} -e \"${search_terms[0]}\" $other_grep_options"
+grep_command="$grep_executable $default_grep_options ${search_locations[@]} --color=$color ${base_grep_options}${extra_grep_options} -e \"${search_terms[0]}\" $other_grep_options"
 if [ $exclude_defaults ==  true ]; then
   #list of directories and file types to exclude by default, will not be excluded if -V flag is used
   declare -a exclude_dirs=(".git" "node_modules" "vendor" "log")
@@ -200,7 +206,7 @@ for (( i=1; i<${#search_terms[@]}; i++ )); do
 done
 
 ###########################################
-# Print or evaluate grep command
+# Print or Evaluate grep Command
 ###########################################
 
 if [ $echo_grep_command == true ]; then
