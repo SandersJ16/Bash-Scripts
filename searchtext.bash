@@ -73,8 +73,10 @@ other_grep_options=""
 exclude_defaults=true
 # If the command should be executed or printed
 echo_grep_command=false
-# Display completed message on finish of search
+# Display completed message on completion of search
 display_completed_message=true
+# Color setting (always, auto, never) to apply to the output
+color_setting=auto
 # All terms to search for
 declare -a search_terms
 # locations we want to search, search is always recursive
@@ -94,7 +96,7 @@ while [ "$#" -gt 0 ]; do
           ;;
         M)
           grep_executable="pcregrep"
-          base_grep_options="-M${base_grep_options:2}"
+          base_grep_options="-M${base_grep_options:2}" # Replace -P (GNUgrep's PCRE flag) with -M (pcregrep's multi line flag)
           ;;
         V)
           exclude_defaults=false
@@ -111,21 +113,32 @@ while [ "$#" -gt 0 ]; do
         S)
           display_completed_message=false
           ;;
-        e|m|d|A|B|C|D)
+        e|m|d|A|B|C|D) # Handle grep options that take an argument
           other_grep_options="$other_grep_options -${opt} ${OPTARG}"
           ;;
-        -)
-          if [ "${OPTARG}" == "help" ]; then
-            usage
-            exit 0
-          fi
-          other_grep_options="$other_grep_options --${OPTARG}"
+        -) # Handle double dash elements
+          dd_option="${OPTARG%%=*}"
+          [[ "${OPTARG}" == *"="* ]] && dd_value="${OPTARG#*=}" || dd_value=""
+
+          case "$dd_option" in
+            help)
+              usage
+              exit 0
+              ;;
+            color)
+              color_setting="$dd_value"
+              allowed_color_settings=("always" "never" "auto")
+              if [[ ! " ${allowed_color_settings[@]} "  =~ " ${color_setting} " ]]; then
+                echo "Invalid value for color: \"${color_setting}\". Must be one of: ${allowed_color_settings[@]}"
+                exit 1
+              fi
+              ;;
+            *) # For all other double dash arguments pass them on as is to grep
+              other_grep_options="$other_grep_options --${OPTARG}"
+              ;;
+          esac
           ;;
         \?)
-          #base_grep_options="${base_grep_options}${OPTARG}"
-          #if [ -z "$extra_grep_options" ]; then
-          #  extra_grep_options="-"
-          #fi
           extra_grep_options="${extra_grep_options}${OPTARG}"
           ;;
         :)
@@ -155,12 +168,16 @@ if [ "${#search_locations[@]}" -eq 0 ]; then
   search_locations=(".")
 fi
 
-# If we are only searching for one string then use color auto
-# otherwise use always to force highlighting of all strings
-if [ "${#search_terms[@]}" -gt 1 ]; then
-  color="always"
+# If we are only searching for one string or not using auto then use color setting passed in
+# otherwise set the color setting to always or never depending on if we are printing to tty/pty
+if [[ "${#search_terms[@]}" > 1  && "$color_setting" == auto ]]; then
+  if [ -t 1 ]; then
+    base_grep_color_setting="always"
+  else
+    base_grep_color_setting="never"
+  fi
 else
-  color="auto"
+  base_grep_color_setting="$color_setting"
 fi
 
 # Our default is to show line numbers, grep does not have a way
@@ -176,7 +193,7 @@ fi
 
 # Search all non binary files for any regex matching the first search term
 # pass any additional command flags to this command as well
-grep_command="$grep_executable $default_grep_options --color=$color ${base_grep_options}${extra_grep_options} -e \"${search_terms[0]}\" $other_grep_options ${search_locations[@]}"
+grep_command="$grep_executable $default_grep_options --color=$base_grep_color_setting ${base_grep_options}${extra_grep_options} -e \"${search_terms[0]}\" $other_grep_options ${search_locations[@]}"
 if [ $exclude_defaults ==  true ]; then
   #list of directories and file types to exclude by default, will not be excluded if -V flag is used
   declare -a exclude_dirs=(".git" "node_modules" "vendor" "log")
@@ -207,7 +224,15 @@ for (( i=1; i<${#search_terms[@]}; i++ )); do
     search_term="${search_term}(?!(.*(\\x1b\\[[0-9;]*[mGKH])[-:](\\x1b\\[[0-9;]*[mGKH])+\d+(\\x1b\\[[0-9;]*[mGKH])+[-:]))"
   fi
 
-  grep_command="$grep_command | $grep_executable ${base_grep_options} -e \"${search_term}\" --color=always"
+  # If this is the last item being searched for use the command's color setting,
+  # otherwise use the same color setting as the base grep command
+  if [ $i -eq $(("${#search_terms[@]}" - 1)) ]; then
+    color="$color_setting"
+  else
+    color="$base_grep_color_setting"
+  fi
+
+  grep_command="$grep_command | $grep_executable ${base_grep_options} -e \"${search_term}\" --color=${color}"
 done
 
 ###########################################
