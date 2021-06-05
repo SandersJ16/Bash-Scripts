@@ -243,7 +243,7 @@ if [ $echo_grep_command == true ]; then
   echo "$grep_command"
 else
   eval "$grep_command"
-  if [ $display_completed_message == true ]; then
+  if [ -t 1 ]  && [ $display_completed_message == true ]; then
     echo -e "\e[1;36m---------------------------Done---------------------------\e[0m"
   fi
 fi
