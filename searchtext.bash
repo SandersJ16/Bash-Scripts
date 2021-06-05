@@ -194,8 +194,9 @@ fi
 # Search all non binary files for any regex matching the first search term
 # pass any additional command flags to this command as well
 grep_command="$grep_executable $default_grep_options --color=$base_grep_color_setting ${base_grep_options}${extra_grep_options} -e \"${search_terms[0]}\" $other_grep_options ${search_locations[@]}"
+
+# Exclude directories and files that are usually not helpful (will not be excluded if -V flag is passed)
 if [ $exclude_defaults ==  true ]; then
-  #list of directories and file types to exclude by default, will not be excluded if -V flag is used
   declare -a exclude_dirs=(".git" "node_modules" "vendor" "log")
   declare -a exclude_files=(".tags" "*.min.js" "*.mo" "*.po" "jit-yc.js" "*.min.css" "*bundle.js" "*.css.map")
 
@@ -240,6 +241,7 @@ done
 ###########################################
 
 if [ $echo_grep_command == true ]; then
+  # Print the grep command that would be run intead of running it (Useful for debugging)
   echo "$grep_command"
 else
   eval "$grep_command"
