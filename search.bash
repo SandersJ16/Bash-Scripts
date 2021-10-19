@@ -175,6 +175,8 @@ find_command="find ${extra_find_args} . -regextype posix-extended ${find_terms} 
 # For each search term supplied colour the matching results
 colourize_command=''
 if [[ "$color_setting" != "never" ]]; then
+    grep_search_string=''
+    # Build grep search string
     for (( i=0; i<${#search_terms[@]}; i++ )); do
         search_term="${search_terms[$i]}"
 
@@ -194,7 +196,7 @@ if [[ "$color_setting" != "never" ]]; then
             fi
         fi
 
-        # If a search term ends with
+        # If a search term begins with
         if [[ "${search_term}" == ^* ]]; then
             search_term="(?<=/)${search_term:1}"
         fi
@@ -210,9 +212,16 @@ if [[ "$color_setting" != "never" ]]; then
             grep_color_setting="$color_setting"
         fi
 
-        # Append grep command to end of current command to color results
-        colourize_command="${colourize_command} | grep -P${grep_command_modifiers}e \"${search_term}${regex_modifer}\" --color=${grep_color_setting}"
+        # Combine multiple regexes to grep for with |
+        if [ ! -z "$grep_search_string" ]; then
+            grep_search_string="${grep_search_string}|"
+        fi
+        grep_search_string="${grep_search_string}${search_term}${regex_modifer}"
     done
+
+    # Append grep command to end of current command to color results, (We add `|$` to make sure that grep doesn't actually
+    # exclude any lines as it will match everything. We only want grep to color the output, `find` should be doing the filtering)
+    colourize_command=" | grep -P${grep_command_modifiers}e \"${grep_search_string}|$\" --color=${grep_color_setting}"
 fi
 
 if [ $print_command == true ];then
