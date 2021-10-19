@@ -1,31 +1,45 @@
 #!/bin/bash
 
-find_type="regex"
-additional_grep_args=""
-find_limiter='-type d -printf "%p/\n" , -type f -print'
-show_colors=true
+print_usage() {
+    cat <<EOF
+Search For any folders or files located in the current directory or subdirectory that contain the regex PATTERNs
+Usage: search [OPTION]... PATTERN [ADDITIONAL_PATTERNS]...
+ex. search -i "hello" "world"
+
+   -i           Make search case insensitive
+   -a           Match on full path instead of just directory or file name
+   -d           Display only matching directories
+   -f           Display only matching files
+   -A           Match all file in all subdirectories (don't ignore special directories)
+   -h, --help   displays basic help
+   -L           Follow symlinks (default will follow symlinks)
+   -l           Don't follow symlinks, opposite of -L
+       --color  One of always, never or auto (auto is default)
+EOF
+}
+
+case_insensitive=false
+find_limiter='-type d -printf "%p/\n" -o -type f -print'
 full_path_search=false
 exclude_special_folders_content=true
 print_command=false
+follow_symlinks=true
+color_setting="auto"
 
-declare -a arguments
+declare -a search_terms
 
 while [ "$#" -gt 0 ]; do
     OPTIND=1
-    while getopts ":hidfnapA" opt; do
+    while getopts ":hidfnapAl-:" opt; do
       case $opt in
         i)
-          find_type="iregex"
-          additional_grep_args="i"
+          case_insensitive=true
           ;;
         d)
-          find_limiter="-type d -printf %p/\n"
+          find_limiter='-type d -printf "%p/\n"'
           ;;
         f)
           find_limiter="-type f"
-          ;;
-        n)
-          show_colors=false
           ;;
         a)
           full_path_search=true
@@ -36,19 +50,38 @@ while [ "$#" -gt 0 ]; do
         p)
           print_command=true
           ;;
+        L)
+          follow_symlinks=true
+          ;;
+        l)
+          follow_symlinks=false
+          ;;
         h)
-          cat <<EOF
-    Search For any folders or files located in the current directory or a subdirectory that contain the regex passed in
-    Usage: search [-iadfn] search_string
-       -i   Make search case insensitive
-       -a   Match on full path instead of just directory or file name
-       -d   Display only matching directories
-       -f   Display only matching files
-       -n   Don't color output
-       -A   Match all file in all subdirectories (don't ignore special directories)
-       -h   displays basic help
-EOF
+          print_usage
           exit 0
+          ;;
+        -) # Handle double dash elements
+          dd_option="${OPTARG%%=*}"
+          [[ "${OPTARG}" == *"="* ]] && dd_value="${OPTARG#*=}" || dd_value=""
+
+          case "$dd_option" in
+            help)
+              print_usage
+              exit 0
+              ;;
+            color)
+              color_setting="$dd_value"
+              allowed_color_settings=("always" "never" "auto")
+              if [[ ! " ${allowed_color_settings[@]} "  =~ " ${color_setting} " ]]; then
+                echo "Invalid value for color: \"${color_setting}\". Must be one of: ${allowed_color_settings[@]}"
+                exit 1
+              fi
+              ;;
+            *)
+              echo "Invalid option: --$OPTARG" >&2
+              exit 1
+              ;;
+          esac
           ;;
         \?)
           echo "Invalid option: -$OPTARG" >&2
@@ -65,29 +98,57 @@ EOF
     # Continue looping through all arguments, store non options in $arguments array
     # This allows us to place options after arguments but still use getopts to process them
     while [[ "$#" -gt 0 ]] && [[ "${1:0:1}" != "-" ]]; do
-        arguments=("${arguments[@]}" "$1")
+        search_terms=("${search_terms[@]}" "$1")
         shift #remove processed arguments
     done
 done
 
 # If there were no arguments exit
-if [ "${#arguments[@]}" -eq 0 ]; then
-    echo "No arguments given"
+if [ "${#search_terms[@]}" -eq 0 ]; then
+    echo "No search terms given"
     exit 1
 fi
 
-# Find all file paths and folder paths that match the regex of the first argument
-find_argument="${arguments[0]}"
-
-# Replace trailing $ with $ or forward slash (grep will take over from there)
-if [[ "${find_argument}" == *$ ]]; then
-    find_argument="${find_argument::-1}(/|$)"
+# Set case insensitive logic
+if [[ "$case_insensitive" == false ]]; then
+    find_type="regex"
+    grep_command_modifiers=""
+else
+    find_type="iregex"
+    grep_command_modifiers="i"
 fi
 
-# Replace ^ with forward slash (grep will take over from there)
-if [[ "${find_argument}" == ^* ]]; then
-    find_argument="/${find_argument:1}"
-fi
+# Build find command search terms
+find_terms=""
+for (( i=0; i<${#search_terms[@]}; i++ )); do
+    search_term="${search_terms[$i]}"
+
+    # Replace trailing $ with $ or forward slash (grep will take over from there)
+    if [[ "${search_term}" == *$ ]]; then
+        search_term="${search_term::-1}(/|$)"
+    fi
+
+    # Replace ^ with forward slash (grep will take over from there)
+    if [[ "${search_term}" == ^* ]]; then
+        search_term="/${search_term:1}"
+    fi
+
+    # If we are not searching the entire path, make sure the matched file/directory
+    # is the last one in the path. This is needed because `find -regex` matches the
+    # regex against the entire path and not the file
+    if [[ "$full_path_search" == true ]]; then
+        trailing_regex=".*"
+    else
+        trailing_regex="[^/]*"
+    fi
+
+    # If we have multiple terms add a space between them
+    if [ ! -z "$find_terms" ]; then
+        find_terms="${find_terms} "
+    fi
+
+    find_terms="${find_terms}-${find_type} \".*${search_term}${trailing_regex}\""
+done
 
 # Special folders that should be exclude from the
 find_exclude=""
@@ -98,44 +159,64 @@ if [[ "$exclude_special_folders_content" == true ]]; then
     done
 fi
 
-find_command="find . -regextype posix-extended -${find_type} \".*${find_argument}.*\" ${find_exclude} ${find_limiter} 2>/dev/null"
+# Figure out additional flags to set for find command
+extra_find_args=""
+if [[ "$follow_symlinks" == true ]]; then
+    extra_find_args="${extra_find_args}L"
+fi
 
-# For each argument supplied perform a grep on the results of the seach, limiting results and providing colouring
-grep_commands=''
-for (( i=0; i<${#arguments[@]}; i++ )); do
-    argument="${arguments[$i]}"
+if [ ! -z "$extra_find_args" ]; then
+    extra_find_args="-${extra_find_args}"
+fi
 
-    if [[ "$full_path_search" == true ]]; then
-        if [[ "${argument}" == *$ ]]; then
-            argument="${argument::-1}"
-            regex_modifer="(?=/|$)"
+# Build find command
+find_command="find ${extra_find_args} . -regextype posix-extended ${find_terms} ${find_exclude} \( ${find_limiter} \) 2>/dev/null"
+
+# For each search term supplied colour the matching results
+colourize_command=''
+if [[ "$color_setting" != "never" ]]; then
+    for (( i=0; i<${#search_terms[@]}; i++ )); do
+        search_term="${search_terms[$i]}"
+
+        if [[ "$full_path_search" == true ]]; then
+            if [[ "${search_term}" == *$ ]]; then
+                search_term="${search_term::-1}"
+                regex_modifer="(?=/|$)"
+            else
+                regex_modifer=""
+            fi
         else
-            regex_modifer=""
+            if [[ "${search_term}" == *$ ]]; then
+                search_term="${search_term::-1}"
+                regex_modifer="(?=/?$)"
+            else
+                regex_modifer="(?=[^/]*/?$)"
+            fi
         fi
-    else
-        if [[ "${argument}" == *$ ]]; then
-            argument="${argument::-1}"
-            regex_modifer="(?=/?$)"
+
+        # If a search term ends with
+        if [[ "${search_term}" == ^* ]]; then
+            search_term="(?<=/)${search_term:1}"
+        fi
+
+        # Figure out color setting for grep command
+        if [[ "${color_setting}" == "auto" ]]; then
+            if [ -t 1 ]; then
+                grep_color_setting="always"
+            else
+                grep_color_setting="never"
+            fi
         else
-            regex_modifer="(?=[^/]*/?$)"
+            grep_color_setting="$color_setting"
         fi
-    fi
 
-    # If an argument ends with
-    if [[ "${argument}" == ^* ]]; then
-        argument="(?<=/)${argument:1}"
-    fi
-
-    grep_commands="${grep_commands} | grep -P${additional_grep_args}e \"${argument}${regex_modifer}\""
-
-    # By default force colour to pass through pipes highlighting all matching parts
-    if [[ "$show_colors" == true ]]; then
-        grep_commands="${grep_commands} --color=always"
-    fi
-done
+        # Append grep command to end of current command to color results
+        colourize_command="${colourize_command} | grep -P${grep_command_modifiers}e \"${search_term}${regex_modifer}\" --color=${grep_color_setting}"
+    done
+fi
 
 if [ $print_command == true ];then
-  echo "${find_command}${grep_commands}"
+  echo "${find_command}${colourize_command}"
 else
-  eval "${find_command}${grep_commands}"
+  eval "${find_command}${colourize_command}"
 fi
