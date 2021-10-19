@@ -7,7 +7,7 @@ fi
 
 if [ $# == 1 ] || [ $run == true ]; then
 	program="$1"
-	
+
 	if [ $run == true ]; then
 		program="$2"
 	fi
@@ -34,6 +34,10 @@ if [ $run == true ] && [ $compiled == true ]; then
 	if [[ "$extension" =~ cs ]]; then
 		executable="${filename}.exe"
 		mono "$executable"
+	elif [[ "$extension" =~ java ]]; then
+		if [[ -f  "${filename^}.class" ]] ; then
+			java "${filename^}"
+		fi
 	else
 		./"$filename"
 	fi
