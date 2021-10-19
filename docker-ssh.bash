@@ -15,7 +15,7 @@ search_name="$1"
 
 containers=($(docker container ps --format '{{.Names}}'))
 if contains "$search_name" "${containers[@]}"; then
-    echo "Found exiting container named '$search_name'"
+    echo "Found existing container named '$search_name'"
     docker exec "${@:2}" -it "$search_name" /bin/bash -l
     exit 0
 fi
