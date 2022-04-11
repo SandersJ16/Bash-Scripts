@@ -86,9 +86,10 @@ def get_pr_merged_branches(branches):
     for remote_merged_branch in parse_json(remote_merged_branches_json):
         head = remote_merged_branch["headRefName"]
         base = remote_merged_branch["baseRefName"]
-        if head not in merged_branches:
-            merged_branches[head] = []
-        merged_branches[head].append(base)
+        if head in branches:
+            if head not in merged_branches:
+                merged_branches[head] = []
+            merged_branches[head].append(base)
     return merged_branches
 
 
